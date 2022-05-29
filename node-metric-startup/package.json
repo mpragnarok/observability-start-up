@@ -1,0 +1,18 @@
+{
+  "name": "metric-startup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.1",
+    "express-prom-bundle": "^6.4.1",
+    "prom-client": "^14.0.1",
+    "response-time": "^2.3.2"
+  }
+}
