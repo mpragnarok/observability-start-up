@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const metricServer = express();
 const prom = require("prom-client");
 const responseTime = require("response-time");
 const Registry = prom.Registry;
@@ -31,7 +32,7 @@ app.get("/", (req, res) =>
 );
 
 // Setup server to Prometheus scrapes:
-app.get("/metrics", async (req, res) => {
+metricServer.get("/metrics", async (req, res) => {
   try {
     res.set("Content-Type", register.contentType);
     res.end(await register.metrics());
@@ -39,6 +40,11 @@ app.get("/metrics", async (req, res) => {
     res.status(500).end(err);
   }
 });
+
+metricServer.listen(9090, function () {
+  console.log("Metric exposed at http://localhost:9090/metrics");
+});
+
 // hello world rest endpoint
 app.get("/foo", (req, res) => res.json({ foo: "bar" }));
 
