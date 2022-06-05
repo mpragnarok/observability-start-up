@@ -8,6 +8,7 @@ const register = new Registry();
 // register prometheus metrics
 prom.collectDefaultMetrics({ register });
 
+// customized prometheus metrics
 const httpRequestDuration = new prom.Histogram({
   name: "http_request_duration_seconds",
   help: "The http request duration in seconds",
@@ -23,6 +24,7 @@ app.use(
     httpRequestDuration.observe({ method, route: originalUrl, statusCode }, duration);
   }),
 );
+// application endpoints
 app.get("/", (req, res) =>
   res.json({
     "GET /": "All Routes",
@@ -31,7 +33,7 @@ app.get("/", (req, res) =>
   }),
 );
 
-// Setup server to Prometheus scrapes:
+// Setup server to Prometheus scrapes
 metricServer.get("/metrics", async (req, res) => {
   try {
     res.set("Content-Type", register.contentType);
@@ -40,7 +42,7 @@ metricServer.get("/metrics", async (req, res) => {
     res.status(500).end(err);
   }
 });
-
+// Set metric server
 metricServer.listen(9090, function () {
   console.log("Metric exposed at http://localhost:9090/metrics");
 });
