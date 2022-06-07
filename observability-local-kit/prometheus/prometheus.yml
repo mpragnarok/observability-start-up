@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Jubo NIS application exposeed prometheus on localhost:9090/metrics
+  - job_name: "nis"
+    # Override global settings
+    scrape_interval: 5s
+    static_configs:
+      # NIS nodejs docker image metric exposed with prom-client
+      - targets: ["nis:9090"]
+      # 本地開發的 APP 
+      # - targets: ["host.docker.internal:9090"] 
+  # Cadvisor provides container users an understanding of the resource usage and performance characteristics of their running containers
+  - job_name: cadvisor
+    scrape_interval: 5s
+    static_configs:
+    - targets: ["cadvisor:8080"]
+
+  # node-exporter exposed hardware and kernel-related metrics on localhost:9100/metrics 
+  # [官方不推薦用 docker 部署 node exporter](https://prometheus.io/docs/guides/node-exporter/) 
+  # 使用本地開發 NIS 玩的話，可以裝來玩玩，看你自己的電腦資源
+  # - job_name: node
+  #   static_configs:
+  #     - targets: ['host.docker.internal:9100']
+

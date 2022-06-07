@@ -1,0 +1,17 @@
+# https://grafana.com/docs/grafana/latest/administration/provisioning/#alert-notification-channels
+vars:
+  url: "{{ lookup('env','SLACK_WEBHOOK') }}"
+
+notifiers:
+  - name: local-pager
+    type: slack
+    uid: local-pager
+    org_id: 1
+    secure_settings:
+      # Add your own slack incoming webhook URL
+      url: "{{ url }}" 
+
+delete_notifiers:
+  - name: local-pager
+    uid: local-pager
+    org_id: 1

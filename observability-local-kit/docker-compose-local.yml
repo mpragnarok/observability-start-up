@@ -1,0 +1,73 @@
+version: "3.2"
+
+networks:
+  grafana:
+
+volumes:
+  app_data: {}
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.34.0
+    container_name: prometheus 
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+    command:
+      - "--config.file=/etc/prometheus/prometheus-local.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - 9091:9090
+    networks:
+      - grafana
+
+  loki:
+    image: grafana/loki:2.5.0
+    container_name: loki 
+    volumes:
+    - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml
+    ports:
+      - 3100:3100
+    command: 
+      - "--config.file=/etc/loki/loki-config.yaml"
+    restart: unless-stopped
+    networks:
+      - grafana
+
+  promtail:
+    image: grafana/promtail:2.5.0
+    volumes:
+      - app_data:/var/log
+      - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/promtail/promtail-config.yaml"
+    networks:
+      - grafana
+
+  grafana:
+    image: grafana/grafana:8.4.5
+    container_name: grafana 
+    ports:
+      - 3000:3000
+    volumes:
+    - ./provisioning/:/etc/grafana/provisioning/
+    networks:
+      - grafana
+
+# https://prometheus.io/docs/guides/cadvisor/
+  cadvisor:
+    # m1 chip unable to use official one, use [zcube/cadvisor](https://github.com/ZCube/cadvisor-docker)instead
+    image: zcube/cadvisor
+    container_name: cadvisor
+    privileged: true
+    ports:
+    - 8081:8080
+    volumes:
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /var/lib/dbus/machine-id:/var/lib/dbus/machine-id:ro
+    networks:
+      - grafana
