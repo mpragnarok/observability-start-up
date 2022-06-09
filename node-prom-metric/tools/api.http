@@ -8,22 +8,13 @@
 @host=localhost
 @port=8080
 @metricPort=9090
-
-### Foo 
-GET http://{{host}}:{{port}}/foo HTTP/1.1
+@time=1
+### sleep 
+GET http://{{host}}:{{port}}/sleep?time={{time}} HTTP/1.1
 Content-Type: application/json
 
 {
     "foo": "bar",
-}
-
-### queue
-GET http://{{host}}:{{port}}/queue HTTP/1.1
-Content-Type: application/json
-
-{
-    "queueASize": 0,
-    "queueBSize": 0,
 }
 
 ### Poke metrics endpoint

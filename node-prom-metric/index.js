@@ -3,22 +3,23 @@ const app = express();
 const metricServer = express();
 const prom = require("prom-client");
 const responseTime = require("response-time");
-const { genRandomInteger, delay } = require("./tools");
+const { delay } = require("./tools");
 const Registry = prom.Registry;
 const register = new Registry();
 // register prometheus metrics
 prom.collectDefaultMetrics({ register });
 
 // customized prometheus metrics
-const fooSalesTotal = new prom.Counter({
-  name: "foo_sales_twd_total",
-  help: "TWD made serving Foo service",
+const httpRequestTotal = new prom.Counter({
+  name: "http_requests_total",
+  help: "Total number of HTTP requests.",
+  labelNames: ["route", "method", "statusCode"],
 });
 
-const queueSizeTotal = new prom.Gauge({
-  name: "queue_size_total",
-  help: "Jobs waiting to be processed in queue",
-  labelNames: ["queueName"],
+const httpRequestsInflight = new prom.Gauge({
+  name: "http_requests_in_flight",
+  help: "The number of inflight HTTP requests being handled at the same time.",
+  labelNames: ["route", "method"],
 });
 
 const httpRequestDuration = new prom.Histogram({
@@ -36,22 +37,27 @@ const httpRequestDurationSummary = new prom.Summary({
 });
 register.registerMetric(httpRequestDuration);
 register.registerMetric(httpRequestDurationSummary);
-register.registerMetric(fooSalesTotal);
-register.registerMetric(queueSizeTotal);
-app.use(
-  responseTime(function (req, res, time) {
-    const { statusCode } = res;
-    const { method, originalUrl } = req;
-    const duration = Math.round(time) / 1000;
+register.registerMetric(httpRequestTotal);
+register.registerMetric(httpRequestsInflight);
+app.use((req, res, next) => {
+  const { method, originalUrl: route } = req;
 
-    httpRequestDuration.observe({ method, route: originalUrl, statusCode }, duration);
-    httpRequestDurationSummary.observe({ method, route: originalUrl, statusCode }, duration);
-  }),
-);
-// application endpoints
+  httpRequestsInflight.inc({ route, method });
+
+  responseTime(function (req, res, time) {
+    const duration = Math.round(time) / 1000;
+    console.log("response duration", duration);
+    const { statusCode } = res;
+    httpRequestTotal.inc({ route, method, statusCode });
+    httpRequestDuration.observe({ method, route, statusCode }, duration);
+    httpRequestsInflight.inc({ route, method }, -1);
+    httpRequestDurationSummary.observe({ method, route, statusCode }, duration);
+  })(req, res, next);
+});
 app.get("/", (req, res) =>
   res.json({
     "GET /": "All Routes",
+    "GET /sleep?time=1": "Sleep 1 second",
   }),
 );
 
@@ -70,22 +76,14 @@ metricServer.listen(9090, function () {
 });
 
 // rest endpoints below
-app.get("/foo", async (req, res) => {
-  const ms = genRandomInteger(3) * 1000;
-  fooSalesTotal.inc(Math.random());
+app.get("/sleep", async (req, res) => {
+  const { time = 1 } = req.query;
+  const ms = time * 1000;
+  console.log("sleep time", time);
   await delay(ms);
   return res.json({ foo: "bar" });
 });
-app.get("/queue", (req, res) => {
-  const queueA = new Array(genRandomInteger(100)).fill("jobA");
-  const queueB = new Array(genRandomInteger(50)).fill("jobB");
-  const queueASize = queueA?.length;
-  const queueBSize = queueB?.length;
-  // jobs waiting in queue
-  queueSizeTotal.labels({ queueName: "a" }).set(queueASize);
-  queueSizeTotal.labels({ queueName: "b" }).set(queueBSize);
-  return res.json({ queueASize, queueBSize });
-});
+
 app.listen(8080, function () {
   console.log("Listening at http://localhost:8080");
 });
