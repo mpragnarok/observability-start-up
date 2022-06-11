@@ -5,7 +5,7 @@ const prom = require("prom-client");
 const { delay } = require("./tools");
 const Registry = prom.Registry;
 const register = new Registry();
-// register prometheus metrics
+// register prometheus default metrics
 // prom.collectDefaultMetrics({ register });
 
 // customized prometheus metrics

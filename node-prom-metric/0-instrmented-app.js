@@ -4,7 +4,8 @@ const metricServer = express();
 const prom = require("prom-client");
 const Registry = prom.Registry;
 const register = new Registry();
-
+// register prometheus default metrics
+// prom.collectDefaultMetrics({ register });
 // Setup server to Prometheus scrapes
 metricServer.get("/metrics", async (req, res) => {
   try {
