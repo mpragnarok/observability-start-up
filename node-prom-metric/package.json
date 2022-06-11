@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start:init": "node 0-instrmented-app.js",
     "start": "node index.js"
   },
   "keywords": [],

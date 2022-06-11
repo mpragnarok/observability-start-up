@@ -2,12 +2,11 @@ const express = require("express");
 const app = express();
 const metricServer = express();
 const prom = require("prom-client");
-const responseTime = require("response-time");
 const { delay } = require("./tools");
 const Registry = prom.Registry;
 const register = new Registry();
 // register prometheus metrics
-prom.collectDefaultMetrics({ register });
+// prom.collectDefaultMetrics({ register });
 
 // customized prometheus metrics
 const httpRequestTotal = new prom.Counter({
@@ -39,27 +38,6 @@ register.registerMetric(httpRequestDuration);
 register.registerMetric(httpRequestDurationSummary);
 register.registerMetric(httpRequestTotal);
 register.registerMetric(httpRequestsInflight);
-app.use((req, res, next) => {
-  const { method, originalUrl: route } = req;
-
-  httpRequestsInflight.inc({ route, method });
-
-  responseTime(function (req, res, time) {
-    const duration = Math.round(time) / 1000;
-    console.log("response duration", duration);
-    const { statusCode } = res;
-    httpRequestTotal.inc({ route, method, statusCode });
-    httpRequestDuration.observe({ method, route, statusCode }, duration);
-    httpRequestsInflight.inc({ route, method }, -1);
-    httpRequestDurationSummary.observe({ method, route, statusCode }, duration);
-  })(req, res, next);
-});
-app.get("/", (req, res) =>
-  res.json({
-    "GET /": "All Routes",
-    "GET /sleep?time=1": "Sleep 1 second",
-  }),
-);
 
 // Setup server to Prometheus scrapes
 metricServer.get("/metrics", async (req, res) => {
@@ -82,6 +60,58 @@ app.get("/sleep", async (req, res) => {
   console.log("sleep time", time);
   await delay(ms);
   return res.json({ foo: "bar" });
+});
+
+app.get("/counter", (req, res) => {
+  const { method, path: route } = req;
+  const { statusCode } = res;
+
+  httpRequestTotal.inc({ route, method, statusCode });
+  res.json("ok");
+});
+
+app.get("/gauge", async (req, res) => {
+  const { method, path: route } = req;
+
+  httpRequestsInflight.inc({ route, method });
+  const duration = 3;
+  const ms = duration * 1000;
+
+  await delay(ms);
+
+  res.json("ok");
+  httpRequestsInflight.dec({ route, method });
+});
+
+app.get("/histogram", async (req, res) => {
+  const {
+    method,
+    path: route,
+    query: { time = 2 },
+  } = req;
+
+  const { statusCode } = res;
+  const duration = parseInt(time, 10);
+  const ms = duration * 1000;
+  console.log("histogram duration", duration);
+  await delay(ms);
+  httpRequestDuration.observe({ method, route, statusCode }, duration);
+
+  res.json("ok");
+});
+app.get("/summary", async (req, res) => {
+  const {
+    method,
+    path: route,
+    query: { time = 2 },
+  } = req;
+  const { statusCode } = res;
+  const duration = parseInt(time, 10);
+  const ms = duration * 1000;
+  console.log("summary duration", duration);
+  httpRequestDurationSummary.observe({ method, route, statusCode }, duration);
+  await delay(ms);
+  res.json("ok");
 });
 
 app.listen(8080, function () {
