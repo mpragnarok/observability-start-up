@@ -31,7 +31,9 @@ const httpRequestDuration = new prom.Histogram({
 const httpRequestDurationSummary = new prom.Summary({
   name: "summary_http_request_duration_seconds",
   help: "The Summary of http request duration in seconds",
-  percentiles: [0.01, 0.1, 0.9, 0.99],
+  percentiles: [0.01, 0.1, 0.9, 0.95, 0.99],
+  maxAgeSeconds: 600, // 10 minutes the bucket will be reset
+  ageBuckets: 5, // 5 buckets in the sliding window
   labelNames: ["route", "method", "statusCode"],
 });
 register.registerMetric(httpRequestDuration);
@@ -93,10 +95,10 @@ app.get("/histogram", async (req, res) => {
   const { statusCode } = res;
   const duration = parseInt(time, 10);
   const ms = duration * 1000;
+  const observe_response_time = httpRequestDuration.startTimer({ method, route, statusCode });
   console.log("histogram duration", duration);
   await delay(ms);
-  httpRequestDuration.observe({ method, route, statusCode }, duration);
-
+  observe_response_time();
   res.json("ok");
 });
 app.get("/summary", async (req, res) => {
@@ -107,10 +109,13 @@ app.get("/summary", async (req, res) => {
   } = req;
   const { statusCode } = res;
   const duration = parseInt(time, 10);
+  const observe_response_time = httpRequestDurationSummary.startTimer({ method, route, statusCode });
+
   const ms = duration * 1000;
   console.log("summary duration", duration);
-  httpRequestDurationSummary.observe({ method, route, statusCode }, duration);
+
   await delay(ms);
+  observe_response_time();
   res.json("ok");
 });
 
